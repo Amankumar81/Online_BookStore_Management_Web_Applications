@@ -306,9 +306,6 @@ function AdminOrderDetails() {
           <Button variant="outlined" onClick={() => navigate("/admin/orders")}>
             ← Back to Orders
           </Button>
-          <Button variant="contained" onClick={() => window.print()}>
-            🖨️ Print Invoice
-          </Button>
         </Box>
       </Box>
     );
@@ -324,35 +321,37 @@ function AdminOrderDetails() {
   return (
     <>
       <style>{`
-        @media screen {
-          .print-invoice { display: none !important; }
-        }
+        .print-invoice { display: none !important; }
         @media print {
           @page { size: A4; margin: 12mm; }
           html, body {
             margin: 0 !important; padding: 0 !important;
             background: white !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
           body * { visibility: hidden !important; }
           .print-invoice, .print-invoice * { visibility: visible !important; }
           .print-invoice {
-            display: block !important; position: absolute !important;
-            left: 0 !important; top: 0 !important; width: 100% !important;
+            display: block !important;
+            position: absolute !important;
+            left: 0 !important; top: 0 !important;
+            width: 100% !important;
             background: white !important; color: black !important;
             padding: 0 !important; margin: 0 !important;
             box-sizing: border-box !important;
+            font-family: Arial, Helvetica, sans-serif !important;
           }
           .print-invoice table {
             width: 100% !important; border-collapse: collapse !important;
           }
           .print-invoice th, .print-invoice td {
             border: 1px solid #cccccc !important; padding: 8px !important;
-            color: black !important;
+            color: black !important; text-align: left;
           }
           .print-invoice th {
             background: #f2f2f2 !important; font-weight: 700 !important;
           }
-          .print-invoice .no-print { display: none !important; }
           .print-invoice .invoice-section {
             break-inside: avoid; page-break-inside: avoid;
           }
@@ -427,19 +426,35 @@ function AdminOrderDetails() {
                 <Alert severity="error">This order has been cancelled.</Alert>
               ) : (
                 <Stepper activeStep={activeStep} alternativeLabel connector={<OrderConnector />}>
-                  {statusSteps.map((status) => (
+                  {statusSteps.map((status, index) => (
                     <Step key={status}>
-                      <StepLabel StepIconComponent={() => (
-                        <Avatar sx={{
-                          width: 34, height: 34,
-                          bgcolor: statusSteps.indexOf(status) <= activeStep
-                            ? "primary.main" : "action.disabledBackground",
-                          color: statusSteps.indexOf(status) <= activeStep
-                            ? "white" : "text.secondary",
-                        }}>
-                          {getStatusIcon(status)}
-                        </Avatar>
-                      )}>{status}</StepLabel>
+                      <StepLabel
+                        icon={
+                          <Avatar
+                            sx={{
+                              width: 24,
+                              height: 24,
+                              bgcolor:
+                                index <= activeStep
+                                  ? "primary.main"
+                                  : "action.disabledBackground",
+                              color:
+                                index <= activeStep
+                                  ? "#fff"
+                                  : "text.secondary",
+                              fontSize: "0.75rem",
+                            }}
+                          >
+                            {index <= activeStep ? (
+                              <CheckCircle sx={{ fontSize: 18, color: "#fff" }} />
+                            ) : (
+                              index + 1
+                            )}
+                          </Avatar>
+                        }
+                      >
+                        {status}
+                      </StepLabel>
                     </Step>
                   ))}
                 </Stepper>
@@ -768,6 +783,143 @@ function AdminOrderDetails() {
             </Box>
           ) : null}
         </Paper>
+      </Box>
+
+      {/* Dedicated invoice document: hidden on screen, visible only when printing. */}
+      <Box className="print-invoice" sx={{
+        display: "none", color: "#111", bgcolor: "#fff",
+        fontFamily: "Arial, Helvetica, sans-serif", fontSize: "12px",
+      }}>
+        <Box sx={{
+          display: "flex", justifyContent: "space-between", alignItems: "flex-start",
+          borderBottom: "2px solid #222", pb: 2, mb: 2,
+        }} className="invoice-section">
+          <Box>
+            <Typography sx={{ fontSize: 26, fontWeight: 800, color: "#111" }}>
+              BOOKSTORE
+            </Typography>
+            <Typography sx={{ fontSize: 12, color: "#444" }}>
+              Order Invoice / Payment Receipt
+            </Typography>
+          </Box>
+          <Box sx={{ textAlign: "right" }}>
+            <Typography sx={{ fontSize: 20, fontWeight: 700, color: "#111" }}>
+              INVOICE
+            </Typography>
+            <Typography sx={{ fontSize: 11, mt: 0.5, overflowWrap: "anywhere" }}>
+              Invoice No: INV-{String(order._id || id).slice(-8).toUpperCase()}
+            </Typography>
+            <Typography sx={{ fontSize: 11 }}>Order Date: {orderDate}</Typography>
+            <Typography sx={{ fontSize: 11, overflowWrap: "anywhere" }}>
+              Order ID: {order._id || id}
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box sx={{ display: "flex", gap: 3, mb: 3 }} className="invoice-section">
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography sx={{ fontWeight: 700, fontSize: 13, mb: 0.8 }}>BILL TO</Typography>
+            <Typography sx={{ fontWeight: 700 }}>{order.user?.name || order.shippingAddress?.fullName || "Customer"}</Typography>
+            <Typography>{order.user?.email || "Email not available"}</Typography>
+            <Typography>{order.shippingAddress?.phone || "Phone not available"}</Typography>
+          </Box>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography sx={{ fontWeight: 700, fontSize: 13, mb: 0.8 }}>SHIP TO</Typography>
+            <Typography>{order.shippingAddress?.fullName || order.user?.name || "N/A"}</Typography>
+            <Typography>{order.shippingAddress?.address || "Address not available"}</Typography>
+            <Typography>
+              {[order.shippingAddress?.city, order.shippingAddress?.state, order.shippingAddress?.postalCode]
+                .filter(Boolean).join(", ") || "N/A"}
+            </Typography>
+            <Typography>{order.shippingAddress?.country || "India"}</Typography>
+          </Box>
+        </Box>
+
+        <Box className="invoice-section" sx={{ mb: 2 }}>
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: "6%" }}>#</th>
+                <th>Book / Description</th>
+                <th style={{ width: "12%" }}>Qty</th>
+                <th style={{ width: "18%" }}>Unit Price</th>
+                <th style={{ width: "20%" }}>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoiceItems.length > 0 ? invoiceItems.map((item, index) => {
+                const quantity = Number(item.quantity || 0);
+                const unitPrice = Number(item.price || 0);
+                return (
+                  <tr key={item._id || index}>
+                    <td>{index + 1}</td>
+                    <td>
+                      <strong>{item.book?.title || item.title || "Book unavailable"}</strong>
+                      <div style={{ color: "#555", marginTop: 3 }}>
+                        Author: {item.book?.author || item.author || "N/A"}
+                      </div>
+                    </td>
+                    <td>{quantity}</td>
+                    <td>₹{unitPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td>₹{(quantity * unitPrice).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                );
+              }) : (
+                <tr><td colSpan={5}>No order items were found for this order.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </Box>
+
+        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 3 }} className="invoice-section">
+          <Box sx={{ width: "min(100%, 300px)" }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", py: 0.5 }}>
+              <Typography sx={{ fontSize: 12 }}>Items Subtotal</Typography>
+              <Typography sx={{ fontSize: 12 }}>
+                ₹{invoiceItems.reduce((sum, item) =>
+                  sum + Number(item.price || 0) * Number(item.quantity || 0), 0
+                ).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Typography>
+            </Box>
+            {(Number(order.discountAmount || order.couponDiscount || order.discount || 0) > 0) && (
+              <Box sx={{ display: "flex", justifyContent: "space-between", py: 0.5 }}>
+                <Typography sx={{ fontSize: 12 }}>
+                  Discount{(order.couponCode || order.coupon?.code) ? ` (${order.couponCode || order.coupon?.code})` : ""}
+                </Typography>
+                <Typography sx={{ fontSize: 12 }}>
+                  -₹{Number(order.discountAmount || order.couponDiscount || order.discount || 0)
+                    .toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Typography>
+              </Box>
+            )}
+            <Divider sx={{ my: 0.8, borderColor: "#555" }} />
+            <Box sx={{ display: "flex", justifyContent: "space-between", py: 0.5 }}>
+              <Typography sx={{ fontSize: 15, fontWeight: 800 }}>TOTAL</Typography>
+              <Typography sx={{ fontSize: 15, fontWeight: 800 }}>
+                ₹{Number(order.totalPrice || 0).toLocaleString("en-IN", {
+                  minimumFractionDigits: 2, maximumFractionDigits: 2,
+                })}
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        <Box sx={{ borderTop: "1px solid #bbb", pt: 2, mb: 3 }} className="invoice-section">
+          <Typography sx={{ fontWeight: 700, fontSize: 13, mb: 1 }}>PAYMENT DETAILS</Typography>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+            <Typography>Method: <strong>{order.paymentMethod || "N/A"}</strong></Typography>
+            <Typography>Payment Status: <strong>{order.paymentStatus || "Pending"}</strong></Typography>
+            <Typography>Order Status: <strong>{order.orderStatus || "N/A"}</strong></Typography>
+          </Box>
+          {order.paidAt && <Typography sx={{ mt: 0.8 }}>Paid At: {formatDate(order.paidAt)}</Typography>}
+        </Box>
+
+        <Box sx={{ borderTop: "1px solid #ddd", pt: 2, textAlign: "center" }} className="invoice-section">
+          <Typography sx={{ fontWeight: 700, fontSize: 13 }}>Thank you for shopping with Bookstore!</Typography>
+          <Typography sx={{ fontSize: 10, color: "#555", mt: 0.5 }}>
+            This is a computer-generated invoice.
+          </Typography>
+        </Box>
       </Box>
     </>
   );
