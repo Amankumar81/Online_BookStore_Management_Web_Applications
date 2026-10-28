@@ -323,25 +323,34 @@ function AdminOrderDetails() {
       <style>{`
         .print-invoice { display: none !important; }
         @media print {
-          @page { size: A4; margin: 12mm; }
+          @page { size: A4; margin: 8mm; }
           html, body {
             margin: 0 !important; padding: 0 !important;
             background: white !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
+          /* Remove the full admin page from print layout so it cannot create blank pages. */
+          .admin-order-screen { display: none !important; }
           body * { visibility: hidden !important; }
           .print-invoice, .print-invoice * { visibility: visible !important; }
           .print-invoice {
             display: block !important;
-            position: absolute !important;
-            left: 0 !important; top: 0 !important;
+            position: static !important;
+            left: auto !important; top: auto !important;
             width: 100% !important;
+            max-width: 100% !important;
             background: white !important; color: black !important;
             padding: 0 !important; margin: 0 !important;
             box-sizing: border-box !important;
             font-family: Arial, Helvetica, sans-serif !important;
           }
+          .print-invoice * { box-sizing: border-box !important; }
+          .print-invoice .invoice-section { break-inside: avoid-page; page-break-inside: avoid; }
+          .print-invoice table { page-break-inside: auto !important; }
+          .print-invoice tr { break-inside: avoid-page; page-break-inside: avoid; }
+          .print-invoice th, .print-invoice td { padding: 5px !important; }
+          .print-invoice p { margin-top: 2px !important; margin-bottom: 2px !important; }
           .print-invoice table {
             width: 100% !important; border-collapse: collapse !important;
           }
@@ -425,7 +434,19 @@ function AdminOrderDetails() {
               {order.orderStatus === "Cancelled" ? (
                 <Alert severity="error">This order has been cancelled.</Alert>
               ) : (
-                <Stepper activeStep={activeStep} alternativeLabel connector={<OrderConnector />}>
+                <Stepper
+                  activeStep={activeStep}
+                  alternativeLabel
+                  connector={<OrderConnector />}
+                  sx={{
+                    "& .MuiStep-root": { px: { xs: 0.5, sm: 1 } },
+                    "& .MuiStepLabel-label": {
+                      whiteSpace: "nowrap",
+                      mx: { xs: 0.5, sm: 0.75 },
+                      fontSize: { xs: "0.72rem", sm: "0.875rem" },
+                    },
+                  }}
+                >
                   {statusSteps.map((status, index) => (
                     <Step key={status}>
                       <StepLabel
